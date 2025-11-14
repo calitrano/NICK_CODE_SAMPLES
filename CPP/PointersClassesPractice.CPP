@@ -1,5 +1,7 @@
 // C++CONSOLE_APP_POINTERS_REF_ETC.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
+// HOPEFULLY HIGHLIGHTING
+//
 using namespace std;
 #include <iostream>
 #include <vector>
