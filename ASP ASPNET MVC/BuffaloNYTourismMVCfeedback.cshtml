@@ -1,0 +1,75 @@
+@*<%@ Page Language="C#" AutoEventWireup="true" CodeFile="FeedbackS.aspx.cs" Inherits="FeedbackS" %>*@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+@{
+    ViewBag.Title = "FeedbackS";
+}
+<h2>@ViewBag.Title.</h2>
+<h3>@ViewBag.Message</h3>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title>Untitled Page</title>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div>
+            <table style="width: 775px; height: 105px">
+                <tr>
+                    <td style="width: 169px"></td>
+                    <td align="center" style="width: 401px"></td>
+                </tr>
+                <tr>
+                    <td style="width: 169px; height: 166px"></td>
+                    <td align="center" style="width: 401px; height: 166px; background-color: transparent; font-size: 15pt;">
+                        FEEDBACK!!!
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 169px">
+                        <asp:Label ID="Label1" runat="server" Font-Bold="True" Font-Size="15pt" Text="Name"
+                                   Width="173px"></asp:Label>
+                    </td>
+                    <td align="center" style="width: 401px">
+                        <asp:TextBox ID="TextBox2" runat="server" Width="365px"></asp:TextBox>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 169px">
+                        <asp:Label ID="Label2" runat="server" Font-Bold="True" Font-Size="15pt" Text="Your Email Address :"
+                                   Width="182px"></asp:Label>
+                    </td>
+                    <td align="center" style="width: 401px">
+                        <asp:TextBox ID="TextBox1" runat="server" Width="364px"></asp:TextBox>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 169px">
+                        <asp:Label ID="Label5" runat="server" Font-Bold="True" Font-Size="15pt" Text="Subject:"
+                                   Width="179px"></asp:Label>
+                    </td>
+                    <td align="center" style="width: 401px">
+                        <asp:TextBox ID="TextBox4" runat="server" Width="396px"></asp:TextBox>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 169px; height: 188px">
+                        <asp:Label ID="Label3" runat="server" Font-Bold="True" Font-Size="15pt" Text="Message"></asp:Label>
+                    </td>
+                    <td align="center" style="width: 401px; height: 188px">
+                        <asp:TextBox ID="TextBox3" runat="server" Height="161px" Width="391px"></asp:TextBox>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 169px; height: 46px"></td>
+                    <td align="center" style="width: 401px; height: 46px">
+                        <asp:Label ID="Label4" runat="server" Font-Bold="True" Font-Size="15pt" Width="435px"></asp:Label>
+                    </td>
+                </tr>
+            </table>
+
+        </div>
+        <asp:Button ID="Button1" runat="server" Font-Bold="True" OnClick="Button1_Click"
+                    Text="CLICK HERE TO SEND FEEDBACK TO NICK " Width="773px" />
+    </form>
+</body>
+</html>
