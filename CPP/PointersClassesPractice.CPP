@@ -11,11 +11,7 @@ using namespace std; // for cout to work w/o std:
 //#include "PointerTestModule.h"
 //#include "PointerTestModule.h"
 
-// adding a change on 11/3/25... 12:00 noon.
-// hoping this works., uncommitted changes from laptop 11/3/25 1:43 pm. 
-// gonna paste this 11/4/25 at 3:16 pm. wish me luck! 
-// omg it works !!! 11/4/25... 3:21 finally??? 
-// c++ test on saturday 11/8/25 1:04 pm. 
+// C++ playing around with pointers... Testing things out... 
 
 void doubleValue(int* p)
 {
