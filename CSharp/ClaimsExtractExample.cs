@@ -11,8 +11,14 @@ using System.Text.RegularExpressions;
 using Logging;
 using IniReader;
 /// Nick DeNora version 11/18/2007
-/// This is a Extract of claims.. in an insurance type application.
-/// 
+///This program reads and ini file for credentials and database etc. 
+///It will put out displays for what it reads. 
+///It also opens files and formats strings.
+///It querries detail using inline SQL
+//It writes and output file when complete 
+///and returns a 0 for no errors during processing. 
+///It demonstrates syntax, structure and coding standards that I used at the time.
+///
 namespace imk00003
 {
     class Program
@@ -689,4 +695,5 @@ namespace imk00003
             }
         }
     }
+
 }
