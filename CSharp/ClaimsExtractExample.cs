@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 
 using Logging;
 using IniReader;
+///
 /// Nick DeNora version 11/18/2007
 ///This program reads and ini file for credentials and database etc. 
 ///It will put out displays for what it reads. 
@@ -697,3 +698,4 @@ namespace imk00003
     }
 
 }
+
