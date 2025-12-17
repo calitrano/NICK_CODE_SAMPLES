@@ -20,7 +20,7 @@ BEGIN
         o.OrderDate,
 
         -- Calculate total value of an order line:
-        -- Quantity × UnitPrice × (1 - Discount)
+        -- Quantity Ã— UnitPrice Ã— (1 - Discount)
         -- Discount is stored as a decimal fraction (e.g., 0.10 for 10%)
         SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) AS TotalOrderValue
 
@@ -31,7 +31,7 @@ BEGIN
         ON o.OrderID = od.OrderID
 
     WHERE c.CustomerID = @CustomerID
-      -- Optional filters — only applied if parameters are supplied
+      -- Optional filters â€” only applied if parameters are supplied
       AND (@StartDate IS NULL OR o.OrderDate >= @StartDate)
       AND (@EndDate   IS NULL OR o.OrderDate <= @EndDate)
 
