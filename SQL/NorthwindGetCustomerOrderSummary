@@ -1,0 +1,30 @@
+CREATE PROCEDURE GetCustomerOrderSummary
+    @CustomerID NVARCHAR(5),
+    @StartDate DATE = NULL,
+    @EndDate DATE = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        c.CustomerID,
+        c.CompanyName,
+        o.OrderID,
+        o.OrderDate,
+        SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) AS TotalOrderValue
+    FROM Customers c
+    INNER JOIN Orders o
+        ON c.CustomerID = o.CustomerID
+    INNER JOIN [Order Details] od
+        ON o.OrderID = od.OrderID
+    WHERE c.CustomerID = @CustomerID
+      AND (@StartDate IS NULL OR o.OrderDate >= @StartDate)
+      AND (@EndDate   IS NULL OR o.OrderDate <= @EndDate)
+    GROUP BY 
+        c.CustomerID, 
+        c.CompanyName, 
+        o.OrderID, 
+        o.OrderDate
+    ORDER BY o.OrderDate DESC;
+END;
+GO
