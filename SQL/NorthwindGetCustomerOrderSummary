@@ -11,7 +11,7 @@ BEGIN
         c.CompanyName,
         o.OrderID,
         o.OrderDate,
-        SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) AS TotalOrderValue
+        SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) AS TotalOrderValue   -- 1 minus the discount in orders.
     FROM Customers c
     INNER JOIN Orders o
         ON c.CustomerID = o.CustomerID
