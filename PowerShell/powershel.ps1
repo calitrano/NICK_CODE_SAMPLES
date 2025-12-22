@@ -76,7 +76,7 @@ namespace ORACLE_EXTRACT_DESKTOP_AUG_21
                 try
                 {
                     con = new OracleConnection();
-                    //        con.ConnectionString = "User Id=IIQReference;Password=IIQ#ref123;Data Source=IIQD;Integrated Security=no";
+                    //        con.ConnectionString = "User Id=IIQReference;Password=****;Data Source=IIQD;Integrated Security=no";
                     con.ConnectionString = "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XEPDB1))); User Id = system; Password = ****; ";
                     con.Open();
                     Console.WriteLine("Yo Man !!!! Connected to Oracle  ---> " + con.ServerVersion);
@@ -101,4 +101,5 @@ namespace ORACLE_EXTRACT_DESKTOP_AUG_21
 
     }
 }
+
 
