@@ -1,8 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Oracle.ManagedDataAccess.Client;
 
 namespace ORACLE_EXTRACT_DESKTOP_AUG_21
@@ -11,93 +7,77 @@ namespace ORACLE_EXTRACT_DESKTOP_AUG_21
     {
         static void Main(string[] args)
         {
-            //            C# / .NET
-            //• // Connection string format: User Id=[username];Password=[password];Data Source=[hostname]:[port]/[DB service name];
-            //• OracleConnection con = new OracleConnection("User Id=system;Password=GetStartedWithXE;Data Source=localhost:1521/XEPDB1;");
-            //• con.Open();
-            //• OracleCommand cmd = con.CreateCommand();
-            //• cmd.CommandText = "SELECT \'Hello World!\' FROM dual";
-
-            //• OracleDataReader reader = cmd.ExecuteReader();
-            //• reader.Read();
-            //            Console.WriteLine(reader.GetString(0));
-
             try
             {
-                OraTest ot = new OraTest();
-                ot.Connect();
-
-                OracleCommand cmd = new OracleCommand();
-                cmd.CommandText = "select * from EVENTS";
-                cmd.Connection = ot.con;
-             //    ot.con.Open();
-                OracleDataReader dr = cmd.ExecuteReader();
-                if (dr.HasRows)
+                using (var oracleHelper = new OraHelper())
                 {
+                    oracleHelper.Connect();
 
-                    Console.WriteLine("hey nick WE HAVE ROWS ! ");
-                    while (dr.Read())
+                    using (var cmd = new OracleCommand("SELECT * FROM EVENTS", oracleHelper.Connection))
+                    using (var reader = cmd.ExecuteReader())
                     {
-                                         
+                        if (reader.HasRows)
+                        {
+                            Console.WriteLine("Rows returned from Oracle:");
 
-                        Console.WriteLine(dr["type"].ToString() + " " + dr["event_date"].ToString() + " " + dr["description"].ToString());
-                        //Console.Write("<td>" + dr["event_date"].ToString() + "</td>");
-                        // Console.Write("</tr>");
+                            while (reader.Read())
+                            {
+                                Console.WriteLine(
+                                    $"{reader["type"]} {reader["event_date"]} {reader["description"]}"
+                                );
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("No data found in EVENTS table.");
+                        }
                     }
-                    Console.Write("closing ");
-                    ot.Close();
-                    }
-                else
-                    {
-                        Console.Write("No Data In DataBase");
-              
-                    }
-        
+                }
 
-        
-
+                Console.WriteLine("Program completed successfully.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine(" Blowing up in Main " + ex.ToString());
+                Console.WriteLine("Unhandled error in Main:");
+                Console.WriteLine(ex.Message);
             }
-            Console.WriteLine(" the program works !!! ");
-
-
-
-
         }
-        class OraTest
+    }
+
+    class OraHelper : IDisposable
+    {
+        public OracleConnection Connection { get; private set; }
+
+        public void Connect()
         {
-
-            public OracleConnection con;
-            public void Connect()
+            try
             {
-                try
-                {
-                    con = new OracleConnection();
-                    //        con.ConnectionString = "User Id=IIQReference;Password=IIQ#ref123;Data Source=IIQD;Integrated Security=no";
-                    con.ConnectionString = "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XEPDB1))); User Id = system; Password = nick1234; ";
-                    con.Open();
-                    Console.WriteLine("Yo Man !!!! Connected to Oracle  ---> " + con.ServerVersion);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(" Cannot Connect Nick " + ex.ToString());
+                // Connection string intentionally redacted.
+                // Expected format:
+                // User Id=<username>;Password=<password>;Data Source=<host>:<port>/<service_name>;
 
+                Connection = new OracleConnection(
+                    "User Id=<USER>;Password=<PASSWORD>;Data Source=localhost:1521/XEPDB1"
+                );
 
-                }
-
+                Connection.Open();
+                Console.WriteLine($"Connected to Oracle. Server version: {Connection.ServerVersion}");
             }
-
-            public void Close()
+            catch (Exception ex)
             {
-                con.Close();
-                con.Dispose();
+                Console.WriteLine("Failed to connect to Oracle:");
+                Console.WriteLine(ex.Message);
+                throw;
             }
-
-
         }
 
+        public void Dispose()
+        {
+            if (Connection != null)
+            {
+                Connection.Close();
+                Connection.Dispose();
+            }
+        }
     }
 }
