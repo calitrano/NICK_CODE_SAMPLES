@@ -12,14 +12,14 @@ namespace ORACLE_EXTRACT_DESKTOP_AUG_21
         static void Main(string[] args)
         {
             //            C# / .NET
-            //• // Connection string format: User Id=[username];Password=[password];Data Source=[hostname]:[port]/[DB service name];
-            //• OracleConnection con = new OracleConnection("User Id=system;Password=GetStartedWithXE;Data Source=localhost:1521/XEPDB1;");
-            //• con.Open();
-            //• OracleCommand cmd = con.CreateCommand();
-            //• cmd.CommandText = "SELECT \'Hello World!\' FROM dual";
+            //â€¢ // Connection string format: User Id=[username];Password=[password];Data Source=[hostname]:[port]/[DB service name];
+            //â€¢ OracleConnection con = new OracleConnection("User Id=system;Password=GetStartedWithXE;Data Source=localhost:1521/XEPDB1;");
+            //â€¢ con.Open();
+            //â€¢ OracleCommand cmd = con.CreateCommand();
+            //â€¢ cmd.CommandText = "SELECT \'Hello World!\' FROM dual";
 
-            //• OracleDataReader reader = cmd.ExecuteReader();
-            //• reader.Read();
+            //â€¢ OracleDataReader reader = cmd.ExecuteReader();
+            //â€¢ reader.Read();
             //            Console.WriteLine(reader.GetString(0));
 
             try
@@ -76,7 +76,7 @@ namespace ORACLE_EXTRACT_DESKTOP_AUG_21
                 try
                 {
                     con = new OracleConnection();
-                    //        con.ConnectionString = "User Id=IIQReference;Password=IIQ#ref123;Data Source=IIQD;Integrated Security=no";
+                    //        con.ConnectionString = "User Id=IIQReference;Password=*****;Data Source=IIQD;Integrated Security=no";
                     con.ConnectionString = "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XEPDB1))); User Id = system; Password = nick1234; ";
                     con.Open();
                     Console.WriteLine("Yes !!!! Connected to Oracle  ---> " + con.ServerVersion);
@@ -100,4 +100,5 @@ namespace ORACLE_EXTRACT_DESKTOP_AUG_21
         }
 
     }
+
 }
