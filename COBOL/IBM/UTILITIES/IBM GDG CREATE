@@ -1,0 +1,16 @@
+//STEP1 EXEC PGM=IDCAMS
+//SYSPRINT DD SYSOUT=*
+//SYSIN DD *
+  DEFINE GDG (NAME(YOUR.GDG.BASE) -
+              LIMIT(5) -
+              SCRATCH -
+              NOEMPTY)
+/*
+What each option means
+NAME → GDG base name
+LIMIT(5) → keep last 5 generations
+SCRATCH → delete old datasets when rolled off
+NOEMPTY → don’t wipe all generations at once
+
+
+
