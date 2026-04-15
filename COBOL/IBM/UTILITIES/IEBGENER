@@ -1,6 +1,6 @@
 
 ```markdown
-```plaintext
+```JCL
 //STEP1 EXEC PGM=IEBGENER
 //SYSPRINT DD SYSOUT=*
 //SYSUT1   DD DSN=INPUT.FILE,DISP=SHR
