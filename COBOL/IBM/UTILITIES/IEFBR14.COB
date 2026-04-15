@@ -13,3 +13,8 @@
 //         DISP=(NEW,PASS),
 //         SPACE=(TRK,(1,1))
 
+//STEP2 EXEC PGM=IEFBR14
+//NEWGEN DD DSN=YOUR.GDG.BASE(+1),
+//            DISP=(NEW,CATLG,DELETE),
+//            SPACE=(TRK,(5,5)),
+//            DCB=(RECFM=FB,LRECL=80)
