@@ -38,4 +38,38 @@ OUTREC IFTHEN=(WHEN=(21,6,ZD),
                BUILD=(1,26,C'GOOD'))
 FINDREP IN=C'ABC',OUT=C'XYZ'
 
+Compare two files using SORT (JOINKEYS)
+Goal:
+Match records by key (ID 1–5)
+Find:
+matches
+only in file1
+only in file2
+
+//STEP1 EXEC PGM=SORT
+//SYSOUT DD SYSOUT=*
+//SORTJNF1 DD DSN=FILE1,DISP=SHR
+//SORTJNF2 DD DSN=FILE2,DISP=SHR
+//SORTOUT  DD SYSOUT=*
+//SYSIN DD *
+  JOINKEYS FILE=F1,FIELDS=(1,5,A)
+  JOINKEYS FILE=F2,FIELDS=(1,5,A)
+
+  REFORMAT FIELDS=(F1:1,26,F2:1,26)
+
+  OPTION COPY
+
+  OUTFIL FNAMES=BOTH,INCLUDE=(1,26,CH,NE,C' ',AND,27,26,CH,NE,C' ')
+  OUTFIL FNAMES=ONLY1,INCLUDE=(27,26,CH,EQ,C' ')
+  OUTFIL FNAMES=ONLY2,INCLUDE=(1,26,CH,EQ,C' ')
+/*
+What this gives you
+Output	Meaning
+BOTH	records in both files
+ONLY1	only in FILE1
+ONLY2	only in FILE2
+
+
+
+
 
