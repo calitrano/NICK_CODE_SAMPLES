@@ -1,0 +1,97 @@
+Case 
+     D NUM             S              1I 0
+
+     C                   EVAL      NUM = 2
+
+     C                   SELECT
+     C     NUM           WHENEQ    1
+     C                   DSPLY     'ONE'
+
+     C     NUM           WHENEQ    2
+     C                   DSPLY     'TWO'
+
+     C                   OTHER
+     C                   DSPLY     'OTHER'
+
+     C                   ENDSL
+
+     C                   SETON                                        LR
+
+
+Loop
+
+     D I               S              3I 0
+
+     C                   EVAL      I = 1
+
+     C     I             DOWLE     5
+
+     C                   DSPLY     I
+
+     C                   ADD       1             I
+
+     C                   ENDDO
+
+     C                   SETON                                        LR
+
+If
+
+     D NUM             S              3I 0
+
+     C                   EVAL      NUM = 10
+
+     C     NUM           IFGT      5
+     C                   DSPLY     'BIG'
+     C                   ENDIF
+
+     C                   SETON                                        LR
+
+Declare a file 
+
+     FCUSTOMER  IF   E           K DISK
+Meaning:
+
+	• F = file spec
+	• CUSTOMER = file name
+	• I = input
+	• F = full procedural
+	• E = externally described
+	• K = keyed
+	• DISK = database file
+
+Typical non-keyed sequential file:
+
+     FSALES     IF   E             DISK
+
+
+
+Read a file 
+
+     FCUSTOMER  IF   E             DISK
+
+     C                   READ      CUSTOMER
+     C                   DOW       NOT %EOF(CUSTOMER)
+
+     C                   DSPLY     CUSNAME
+
+     C                   READ      CUSTOMER
+
+     C                   ENDDO
+
+     C                   SETON                                        LR
+
+
+Write a file 
+
+     FCUSTOMER  O    E             DISK
+
+     C                   EVAL      CUSNO = 1001
+     C                   EVAL      CUSNAME = 'NICK'
+
+     C                   WRITE     CUSTOMER
+
+     C                   SETON                                        LR
+
+
+
+
