@@ -1,0 +1,161 @@
+Logical Files (DDS) - Sort, Select and Omit examples
+======================================================
+
+On IBM i (AS/400), a Logical File (LF) does not store data itself.
+It gives you a different "view" over one or more Physical Files (PF):
+a different sort order (keys), and/or a subset of the records
+(SELECT / OMIT), without copying or duplicating the data.
+
+All DDS source lines below follow the classic fixed-column layout:
+
+	• Column 6  = Form type, always "A" for DDS
+	• Column 7  = "*" marks a full comment line
+	• Column 17 = "R" starts a record format, "K" defines a key field,
+	              "S" is a SELECT condition, "O" is an OMIT condition
+	• Column 19+ = Field name / keyword / values
+
+
+Underlying Physical File (for reference)
+-----------------------------------------
+
+     A          R CUSTREC
+     A            CUSNO          6P 0
+     A            CUSNAME       30A
+     A            STATE          2A
+     A            STATUS         1A
+     A          K CUSNO
+
+Meaning:
+	• CUSTOMER (PF) has one record format, CUSTREC
+	• CUSNO   = customer number (packed 6,0) - arrival key
+	• CUSNAME = customer name
+	• STATE   = 2-char state code
+	• STATUS  = 'A' active, 'I' inactive, 'D' deleted
+
+
+Example 1 - Simple keyed logical file (sort only)
+----------------------------------------------------
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A          K STATE
+     A          K CUSNAME
+
+Meaning:
+	• PFILE(CUSTOMER) - this LF is built over the CUSTOMER physical file
+	• No SELECT/OMIT is used, so every record from CUSTOMER is visible
+	• K STATE, then K CUSNAME - records are presented in ascending
+	  order by STATE, then by CUSNAME within each STATE (a compound key)
+	• This is the DDS equivalent of "ORDER BY STATE, CUSNAME"
+
+
+Example 2 - Descending key
+------------------------------
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A          K CUSNO                    DESCEND
+
+Meaning:
+	• DESCEND reverses the sort order for that key field only
+	• Highest CUSNO is read first - useful for "most recent record" views
+
+
+Example 3 - SELECT (only include matching records)
+-------------------------------------------------------
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A          K STATE
+     A            STATE
+     A          S                          COMP(EQ 'CA')
+     A          K CUSNAME
+
+Meaning:
+	• The "S" entry in column 17 says: only SELECT records where the
+	  named field satisfies the COMP condition
+	• COMP(EQ 'CA') - only rows where STATE = 'CA' are visible
+	  through this logical file
+	• A logical file can carry several S entries; when several
+	  conditions apply to the *same* field they are OR'ed together,
+	  conditions on *different* fields are AND'ed together
+
+
+Example 4 - SELECT with a list of VALUES
+--------------------------------------------
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A          K STATE
+     A            STATE
+     A          S                          VALUES('CA' 'NV' 'OR')
+     A          K CUSNAME
+
+Meaning:
+	• VALUES(...) selects any record whose STATE matches one of the
+	  listed values - equivalent to SQL "WHERE STATE IN ('CA','NV','OR')"
+
+
+Example 5 - OMIT (exclude matching records)
+------------------------------------------------
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A          K CUSNAME
+     A            STATUS
+     A          O                          COMP(EQ 'D')
+
+Meaning:
+	• The "O" entry works like "S" but excludes the matching rows instead
+	• COMP(EQ 'D') - records flagged STATUS = 'D' (deleted) never appear
+	  through this logical file, even though they still exist in the PF
+	• SELECT and OMIT can be combined: e.g. SELECT active customers in a
+	  RANGE of states, then OMIT a specific customer number
+
+
+Example 6 - SELECT with a RANGE, plus OMIT, combined
+----------------------------------------------------------
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A          K STATE
+     A            CUSNO
+     A          S                          RANGE(100000 199999)
+     A            STATUS
+     A          O                          COMP(EQ 'I')
+     A          K CUSNAME
+
+Meaning:
+	• RANGE(low high) selects only records whose CUSNO falls between
+	  100000 and 199999 inclusive
+	• The second field, STATUS, then OMITs any of those that are
+	  Inactive ('I')
+	• Result: active customers with CUSNO 100000-199999, sorted by
+	  STATE then CUSNAME
+
+
+Example 7 - Unique key and dynamic select/omit
+---------------------------------------------------
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A                                      UNIQUE
+     A          K CUSNO
+     A            STATUS
+     A          S                          COMP(EQ 'A')
+     A                                      DYNSLT
+
+Meaning:
+	• UNIQUE - rejects/duplicate-key protects so this key value
+	  can appear only once through the logical file
+	• DYNSLT - selection is evaluated dynamically at OPEN/READ time
+	  instead of being resolved into an access path at build time;
+	  handy when the select/omit values change often or depend on
+	  a value passed in from the program (avoids rebuilding the LF)
+
+
+Quick reference
+-------------------
+	• K       -> defines a key field (sort sequence)
+	• DESCEND -> sorts that key field high to low
+	• S       -> SELECT: keep only records matching the condition
+	• O       -> OMIT: drop records matching the condition
+	• COMP    -> compares a field to a single value (EQ, NE, GT, LT, GE, LE)
+	• VALUES  -> compares a field to a list of values (OR'ed)
+	• RANGE   -> compares a field to a low/high pair (inclusive)
+	• UNIQUE  -> enforces unique key values in the logical view
+	• DYNSLT  -> evaluates SELECT/OMIT at runtime instead of build time
+	• PFILE   -> names the physical file(s) this logical file is based on
