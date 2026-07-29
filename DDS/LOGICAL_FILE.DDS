@@ -350,22 +350,41 @@ Common compile errors (and what they actually mean)
 
 Runtime gotchas (compiles fine, but doesn't do what you expect)
 ----------------------------------------------------------------------
-	• "My K DESCEND isn't honored in SQL." SQL never guarantees row
-	  order unless you say so - a table/view/logical file is just an
-	  unordered set to the relational engine. "SELECT * FROM ..." with
-	  no ORDER BY can come back in arrival order, index order, or
-	  whatever the optimizer picked that run - never rely on it. Add
-	  "ORDER BY CLMNO DESC" explicitly; if it matches the LF's key,
-	  the optimizer will often reuse that access path to satisfy it
-	  cheaply, so the key still isn't wasted effort.
-	• "My K DESCEND isn't honored even in RUNQRY / native reads
-	  either." Check for DYNSLT on the file. DYNSLT skips building a
-	  real access path in favor of dynamically testing select/omit at
-	  read time - as a side effect, the K field's sort order is never
-	  materialized either, so NOTHING sorts by it, native or SQL. Fix:
-	  only use DYNSLT when the select/omit value truly varies at
-	  runtime; drop it for fixed/constant conditions so the key builds
-	  a real, honored access path.
+On IBM i, DDS physical/logical files ARE Db2 for i objects - a PF is
+a table, a keyed LF is an index, a select/omit-only LF is roughly a
+view. Same storage, same catalog, no matter which of these you read
+it with. But which of these consumers guarantees the K order is not
+the same for all of them:
+
+	• TRUE native record-level I/O - an RPG "READ"/"CHAIN" against a
+	  keyed file, or DSPPFM - walks the access path directly. This is
+	  the ONE method that is genuinely guaranteed to return K order,
+	  by language definition, no extra syntax required.
+	• SQL (STRSQL, RUNSQL, ACS Run SQL, embedded SQL) is processed by
+	  the SQL query engine, which treats every table/view as an
+	  UNORDERED SET per the relational model - "SELECT * FROM ..."
+	  with no ORDER BY can come back in arrival order, index order, or
+	  whatever the optimizer picked that run. Add "ORDER BY CLMNO
+	  DESC" explicitly every time; the optimizer will often reuse a
+	  matching K access path to satisfy it cheaply, so the key isn't
+	  wasted effort, but it is never a substitute for ORDER BY.
+	• Query/400 (RUNQRY) is ALSO optimizer-driven, not a guaranteed
+	  native read - it picks whichever access path looks cheapest and
+	  will happily ignore the LF's key unless you explicitly add the
+	  field as a sequencing/sort field inside the query definition
+	  itself. Pointing RUNQRY at a keyed LF is not, by itself, enough.
+	• If K order looks wrong everywhere, first rule out DYNSLT on the
+	  file - it skips building a real access path in favor of
+	  dynamically testing select/omit at read time, and as a side
+	  effect the K field's sort order is never materialized either,
+	  so NOTHING sorts by it, not even native reads. Only use DYNSLT
+	  when the select/omit value truly varies at runtime; drop it for
+	  fixed/constant conditions so the key builds a real access path.
+	• Fastest way to prove the access path itself is correct, no
+	  compile required: "DSPPFM FILE(lib/logical-file-name)" - it
+	  walks the access path directly, so it will show true K order
+	  (or expose that the access path still isn't what you think it
+	  is) before you go troubleshoot SQL's or Query/400's behavior.
 
 
 Quick reference
