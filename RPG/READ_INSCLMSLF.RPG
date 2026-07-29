@@ -1,0 +1,89 @@
+Read a Logical File (RPG) - INSCLMSLF, keyed DESCEND on CLMNO
+====================================================================
+
+This reads INSCLMSLF, the real logical file we worked through in
+DDS/LOGICAL_FILE.DDS's "Runtime gotchas" / CPD7948 / CPD7486
+troubleshooting (record format INSCLMSREC, built over physical file
+INSCLMS, keyed DESCEND on CLMNO, omitting any claim where ST = 'NY').
+
+Because the sort and the filter both live in the DDS, this program
+needs zero sorting logic and zero "skip NY rows" logic - by the time
+RPG sees a record, both are already done.
+
+
+Declare the file
+--------------------
+
+     FINSCLMSLF IF   E           K DISK
+
+Meaning:
+	• INSCLMSLF - the logical file name (not the physical INSCLMS)
+	• I = input only, F = full procedural, E = externally described
+	  (field attributes come straight from the DDS - no D-specs needed
+	  for CLMNO, CUSTOMER, STREET, CITY, ST, or NOTES below)
+	• K = keyed - reads follow the LF's own access path (CLMNO
+	  DESCEND), so the highest claim number comes back first
+
+
+Read every visible record, highest CLMNO first
+----------------------------------------------------
+
+     FINSCLMSLF IF   E           K DISK
+
+     C                   READ      INSCLMSLF
+     C                   DOW       NOT %EOF(INSCLMSLF)
+
+     C                   DSPLY     CLMNO
+     C                   DSPLY     CUSTOMER
+     C                   DSPLY     STREET
+
+     C                   READ      INSCLMSLF
+
+     C                   ENDDO
+
+     C                   SETON                                        LR
+
+Meaning:
+	• READ INSCLMSLF reads the NEXT record in the file's own order;
+	  since the access path is CLMNO DESCEND, that's highest CLMNO to
+	  lowest, and any ST = 'NY' row never shows up here at all
+	• %EOF(INSCLMSLF) turns on once the last visible record has been
+	  read - the standard READ / DOW / ENDDO loop shape
+	• CLMNO, CUSTOMER, STREET are usable with no D-specs at all,
+	  because "E" on the F-spec pulls every field's name/length/type
+	  straight from INSCLMSLF's DDS
+
+
+Jump straight to the most recent claim (highest CLMNO)
+------------------------------------------------------------
+
+     FINSCLMSLF IF   E           K DISK
+
+     C                   SETLL     *LOVAL        INSCLMSLF
+     C                   READ      INSCLMSLF
+
+     C                   IF        NOT %EOF(INSCLMSLF)
+     C                   DSPLY     CLMNO
+     C                   DSPLY     CUSTOMER
+     C                   ENDIF
+
+     C                   SETON                                        LR
+
+Meaning:
+	• The access path is DESCEND, so *LOVAL is actually the HIGHEST
+	  key value in this file's read order - positioning to *LOVAL and
+	  reading once hands back the single most recent claim, with no
+	  sorting written in RPG at all
+	• This is the practical payoff of building the key descending in
+	  the DDS instead of ascending and reading the file backwards
+
+
+Quick reference
+-------------------
+	• IF E ... K DISK -> input-only, externally described, keyed file
+	• READ filename     -> reads the next record in access-path order
+	• %EOF(filename)     -> true once the last record has been read
+	• SETLL *LOVAL       -> positions before the first record in key
+	  order (the HIGHEST value, on a DESCEND key)
+	• Fields with no D-spec at all - "E" on the F-spec means RPG
+	  already knows their name/type/length from the DDS
