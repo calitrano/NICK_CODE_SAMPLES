@@ -176,6 +176,13 @@ Meaning:
 	  instead of being resolved into an access path at build time;
 	  handy when the select/omit values change often or depend on
 	  a value passed in from the program (avoids rebuilding the LF)
+	• Trade-off: DYNSLT means NO persistent keyed access path gets
+	  built for this file at all - so a K field on a DYNSLT file is
+	  NOT honored as a sort order by anything (not RUNQRY, not native
+	  RPG reads, not SQL). Only reach for DYNSLT when the select/omit
+	  VALUE genuinely changes at runtime (e.g. passed in as a program
+	  variable); if it's a fixed constant like COMP(EQ 'NY'), leave
+	  DYNSLT off so the key actually gets built as a real access path
 
 
 Example 8 - Renamed/derived fields, alternate collating, duplicate order
@@ -339,6 +346,26 @@ Common compile errors (and what they actually mean)
 	  format breaks the required order (all keys, then all
 	  select/omit) even when no single line looks wrong on its own -
 	  move every K entry above every S/O entry for that format.
+
+
+Runtime gotchas (compiles fine, but doesn't do what you expect)
+----------------------------------------------------------------------
+	• "My K DESCEND isn't honored in SQL." SQL never guarantees row
+	  order unless you say so - a table/view/logical file is just an
+	  unordered set to the relational engine. "SELECT * FROM ..." with
+	  no ORDER BY can come back in arrival order, index order, or
+	  whatever the optimizer picked that run - never rely on it. Add
+	  "ORDER BY CLMNO DESC" explicitly; if it matches the LF's key,
+	  the optimizer will often reuse that access path to satisfy it
+	  cheaply, so the key still isn't wasted effort.
+	• "My K DESCEND isn't honored even in RUNQRY / native reads
+	  either." Check for DYNSLT on the file. DYNSLT skips building a
+	  real access path in favor of dynamically testing select/omit at
+	  read time - as a side effect, the K field's sort order is never
+	  materialized either, so NOTHING sorts by it, native or SQL. Fix:
+	  only use DYNSLT when the select/omit value truly varies at
+	  runtime; drop it for fixed/constant conditions so the key builds
+	  a real, honored access path.
 
 
 Quick reference
