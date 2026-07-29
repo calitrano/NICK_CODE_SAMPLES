@@ -147,15 +147,122 @@ Meaning:
 	  a value passed in from the program (avoids rebuilding the LF)
 
 
+Example 8 - Renamed/derived fields, alternate collating, duplicate order
+------------------------------------------------------------------------------
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A            CUSTNBR                    RENAME(CUSNO)
+     A            FULLNAME      36           CONCAT(CUSNAME STATE)
+     A            CUSNAME                    TEXT('Customer full name')
+     A                                        COLHDG('CUST' 'NAME')
+     A          K STATE
+     A                                        ALTSEQ(MYXLATE)
+     A          K CUSTNBR
+     A                                        FIFO
+
+Meaning:
+	• RENAME(CUSNO) - CUSTNBR is what this logical view calls the field,
+	  even though it's physically stored as CUSNO in the PF; lets a
+	  program use a friendlier/standard name without touching the data
+	• CONCAT(CUSNAME STATE) - FULLNAME doesn't exist in the physical
+	  file at all; it's built on the fly by joining CUSNAME and STATE
+	  together into one 36-character field
+	• TEXT / COLHDG - documentation-only keywords; TEXT is the field's
+	  description, COLHDG supplies column-heading text for displays and
+	  query tools - neither one changes the data
+	• ALTSEQ(MYXLATE) - sorts STATE using an alternate collating
+	  sequence table instead of normal EBCDIC order (e.g. for
+	  case-insensitive or language-specific sorting); ABSVAL is a
+	  sibling keyword that sorts a signed numeric key by its absolute
+	  value instead
+	• FIFO - when two records share the same CUSTNBR key value, the
+	  oldest-arrival one is returned first; LIFO reverses that, and
+	  FCFO (first-changed-first-out) is a third option based on update
+	  order rather than arrival order
+	• Not shown here, but related: FORMAT(fmtname) copies an entire
+	  record format's field list from another file instead of retyping
+	  every field, and REFFLD pulls one field's attributes from a field
+	  reference file - both save typing when several files share fields
+
+A logical file doesn't need a key at all - SELECT/OMIT alone is legal:
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A            STATUS
+     A          S                          COMP(EQ 'A')
+
+Meaning:
+	• No "K" entry - records come back in the physical file's arrival
+	  sequence, just filtered to STATUS = 'A'
+
+
+Example 9 - Multi-format logical file and Join logical file
+------------------------------------------------------------------
+
+A single logical file can bundle more than one record format, each
+pointed at a different physical file - still not a join, just two
+independent "windows" sharing one file object:
+
+     A          R CUSTFMT                  PFILE(CUSTOMER)
+     A            CUSNO
+     A            CUSNAME
+     A
+     A          R ORDFMT                   PFILE(ORDERS)
+     A            ORDNO
+     A            CUSNO
+     A            ORDDATE
+
+Meaning:
+	• CUSTFMT reads/writes CUSTOMER, ORDFMT reads/writes ORDERS
+	• A program opens this one LF and can READ either format by name
+	• Useful for menu-driver style programs that want several files
+	  under one file object; the two formats never combine rows
+
+A Join Logical File (JLF) is different - it actually combines rows
+from two or more physical files into one record format, similar to a
+SQL join. It is read-only: no WRITE/UPDATE/DELETE through a JLF.
+
+     A          R JOINREC                  JFILE(CUSTOMER ORDERS)
+     A          J                          JOIN(1 2)
+     A            CUSNO                     JFLD(CUSNO)
+     A            CUSNAME
+     A            ORDNO
+     A            ORDDATE
+     A                                      JDFTVAL
+
+Meaning:
+	• JFILE(CUSTOMER ORDERS) - the physical files being joined;
+	  CUSTOMER is file 1 (primary), ORDERS is file 2 (secondary)
+	• The "J" entry with JOIN(1 2) starts the join condition between
+	  those two files
+	• JFLD(CUSNO) - the field the two files are matched on (it must
+	  exist in both physical files); this is the join's "ON" clause
+	• JDFTVAL - if a CUSTOMER has no matching ORDERS row, still return
+	  the customer with default/blank values for the order fields;
+	  this is what makes it behave like a LEFT OUTER JOIN instead of
+	  the plain INNER JOIN a JLF does by default
+	• Real join DDS needs a few more entries (JDUPSEQ to control which
+	  match wins when several secondary rows qualify, etc.) - this is
+	  a simplified illustration of the core idea, not compile-ready
+
+
 Quick reference
 -------------------
-	• K       -> defines a key field (sort sequence)
-	• DESCEND -> sorts that key field high to low
-	• S       -> SELECT: keep only records matching the condition
-	• O       -> OMIT: drop records matching the condition
-	• COMP    -> compares a field to a single value (EQ, NE, GT, LT, GE, LE)
-	• VALUES  -> compares a field to a list of values (OR'ed)
-	• RANGE   -> compares a field to a low/high pair (inclusive)
-	• UNIQUE  -> enforces unique key values in the logical view
-	• DYNSLT  -> evaluates SELECT/OMIT at runtime instead of build time
-	• PFILE   -> names the physical file(s) this logical file is based on
+	• K        -> defines a key field (sort sequence)
+	• DESCEND  -> sorts that key field high to low
+	• S        -> SELECT: keep only records matching the condition
+	• O        -> OMIT: drop records matching the condition
+	• COMP     -> compares a field to a single value (EQ, NE, GT, LT, GE, LE)
+	• VALUES   -> compares a field to a list of values (OR'ed)
+	• RANGE    -> compares a field to a low/high pair (inclusive)
+	• UNIQUE   -> enforces unique key values in the logical view
+	• DYNSLT   -> evaluates SELECT/OMIT at runtime instead of build time
+	• PFILE    -> names the physical file(s) this logical file is based on
+	• RENAME   -> exposes a physical field under a different name
+	• CONCAT   -> builds a field by joining two or more physical fields
+	• FORMAT   -> reuses another file's entire record format definition
+	• REFFLD   -> pulls one field's attributes from a field reference file
+	• TEXT / COLHDG -> documentation only: description / column headings
+	• ALTSEQ   -> sorts a key using an alternate collating sequence
+	• ABSVAL   -> sorts a signed numeric key by absolute value
+	• FIFO/LIFO/FCFO -> order for records that share the same key value
+	• JFILE/JOIN/JFLD/JDFTVAL -> build a read-only Join Logical File
