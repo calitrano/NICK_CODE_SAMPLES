@@ -14,6 +14,32 @@ All DDS source lines below follow the classic fixed-column layout:
 	              "S" is a SELECT condition, "O" is an OMIT condition
 	• Column 19+ = Field name / keyword / values
 
+Order rules DDS actually enforces (the #1 source of "why won't this
+compile"):
+
+	1. File-level keywords (UNIQUE, DYNSLT, a file-wide ALTSEQ, etc.)
+	   come first, on their own line with no name/type, BEFORE the
+	   "R" record format line.
+	2. The "R" line starts the record format, followed by its field
+	   entries and its "K" key entries - these two can be mixed in
+	   any order relative to each other.
+	3. Every "K" entry for a record format must appear before any
+	   "S"/"O" entry for that same record format - select/omit is
+	   always the LAST group. A "K" placed after an "S"/"O" line
+	   breaks this order.
+	4. A field used in "S"/"O" must already be part of the record
+	   format's field list - either given its own field-level entry,
+	   or already used in a "K" entry. Referenced only on the S/O
+	   line and nowhere else - and DDS raises CPD7948, "select/omit
+	   field name not found in logical file" - unless the file also
+	   specifies DYNSLT, which relaxes that requirement.
+	5. A file-level keyword coded in the wrong spot (after "R", or
+	   nested under a field/key/select-omit entry) raises CPD7486,
+	   "keyword specified at incorrect level."
+	6. Numeric fields (P/S/B) always need BOTH digits and decimal
+	   positions if you restate their attributes in the LF - "10P 0",
+	   never just "10P".
+
 
 Underlying Physical File (for reference)
 -----------------------------------------
@@ -64,13 +90,15 @@ Example 3 - SELECT (only include matching records)
 
      A          R CUSTREC                  PFILE(CUSTOMER)
      A          K STATE
-     A            STATE
-     A          S                          COMP(EQ 'CA')
      A          K CUSNAME
+     A          S STATE                    COMP(EQ 'CA')
 
 Meaning:
-	• The "S" entry in column 17 says: only SELECT records where the
-	  named field satisfies the COMP condition
+	• Both K entries come first, then the "S" entry last - S/O must
+	  always follow every K entry in the same record format
+	• Naming the field directly on the S line ("S STATE") is clearer
+	  than leaving it blank and relying on "the field named just
+	  above," especially once keys are grouped ahead of it
 	• COMP(EQ 'CA') - only rows where STATE = 'CA' are visible
 	  through this logical file
 	• A logical file can carry several S entries; when several
@@ -83,11 +111,11 @@ Example 4 - SELECT with a list of VALUES
 
      A          R CUSTREC                  PFILE(CUSTOMER)
      A          K STATE
-     A            STATE
-     A          S                          VALUES('CA' 'NV' 'OR')
      A          K CUSNAME
+     A          S STATE                    VALUES('CA' 'NV' 'OR')
 
 Meaning:
+	• Same ordering rule as Example 3 - both keys before the S entry
 	• VALUES(...) selects any record whose STATE matches one of the
 	  listed values - equivalent to SQL "WHERE STATE IN ('CA','NV','OR')"
 
@@ -97,8 +125,7 @@ Example 5 - OMIT (exclude matching records)
 
      A          R CUSTREC                  PFILE(CUSTOMER)
      A          K CUSNAME
-     A            STATUS
-     A          O                          COMP(EQ 'D')
+     A          O STATUS                   COMP(EQ 'D')
 
 Meaning:
 	• The "O" entry works like "S" but excludes the matching rows instead
@@ -113,17 +140,17 @@ Example 6 - SELECT with a RANGE, plus OMIT, combined
 
      A          R CUSTREC                  PFILE(CUSTOMER)
      A          K STATE
-     A            CUSNO
-     A          S                          RANGE(100000 199999)
-     A            STATUS
-     A          O                          COMP(EQ 'I')
      A          K CUSNAME
+     A          S CUSNO                    RANGE(100000 199999)
+     A          O STATUS                   COMP(EQ 'I')
 
 Meaning:
+	• Both keys (STATE, CUSNAME) are grouped first, then the S and O
+	  entries follow - S/O is always the last group, listed in the
+	  order the conditions should be AND'ed together
 	• RANGE(low high) selects only records whose CUSNO falls between
 	  100000 and 199999 inclusive
-	• The second field, STATUS, then OMITs any of those that are
-	  Inactive ('I')
+	• The O entry then OMITs any of those that are Inactive ('I')
 	• Result: active customers with CUSNO 100000-199999, sorted by
 	  STATE then CUSNAME
 
@@ -131,16 +158,20 @@ Meaning:
 Example 7 - Unique key and dynamic select/omit
 ---------------------------------------------------
 
-     A          R CUSTREC                  PFILE(CUSTOMER)
      A                                      UNIQUE
-     A          K CUSNO
-     A            STATUS
-     A          S                          COMP(EQ 'A')
      A                                      DYNSLT
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A          K CUSNO
+     A          S STATUS                   COMP(EQ 'A')
 
 Meaning:
-	• UNIQUE - rejects/duplicate-key protects so this key value
-	  can appear only once through the logical file
+	• UNIQUE and DYNSLT are both FILE-level keywords - each goes on
+	  its own line, with no name/type, BEFORE the "R" record format
+	  line. Coding one of them after a field, key, or select/omit
+	  entry instead - e.g. tacking DYNSLT onto the end of an "S"
+	  entry - raises CPD7486, "keyword specified at incorrect level"
+	• UNIQUE - duplicate-key protection, so a key value can appear
+	  only once through the logical file
 	• DYNSLT - selection is evaluated dynamically at OPEN/READ time
 	  instead of being resolved into an access path at build time;
 	  handy when the select/omit values change often or depend on
@@ -245,6 +276,71 @@ Meaning:
 	  a simplified illustration of the core idea, not compile-ready
 
 
+Example 10 - Multiple logical files over the same physical file
+------------------------------------------------------------------
+
+Nothing stops you from building several logical files against the
+same PFILE - this is the normal, everyday reason LFs exist: one set
+of physical rows, several different "views" over it, no duplicated
+data. Only the file name has to differ; what actually varies between
+them is the key, the select/omit, and/or the field list.
+
+Sorted by customer name, every column, no filter:
+
+     A          R CUSTREC                  PFILE(CUSTOMER)
+     A          K CUSNAME
+
+Filtered to one state only, sorted by customer number:
+
+     A          R CUSTREC2                 PFILE(CUSTOMER)
+     A          K CUSNO
+     A          S STATE                    COMP(EQ 'CA')
+
+A trimmed-down "lookup" view - just two fields, arrival order, active only:
+
+     A          R CUSTLKUP                 PFILE(CUSTOMER)
+     A            CUSNO
+     A            CUSNAME
+     A          O STATUS                   COMP(NE 'A')
+
+Meaning:
+	• Each one is its own object (CUSTL1/CUSTL2/CUSTL3-style names in
+	  real life) - that's the only thing that MUST differ
+	• Record format names were also changed here (CUSTREC, CUSTREC2,
+	  CUSTLKUP) - not strictly required, but if a program ever opens
+	  two of these logical files at the same time, RPG/COBOL won't
+	  allow two open files sharing one record format name unless you
+	  add PREFIX on the F-spec, so distinct names avoid that headache
+	• The third LF lists only CUSNO/CUSNAME, so that's all a program
+	  reading through it will ever see, even though CUSTOMER has more
+	  fields - handy for exposing a "safe" subset of a table
+	• If two LFs end up with identical keys AND identical select/omit,
+	  the system automatically shares one access path between them
+	  instead of building/maintaining two identical indexes - keeping
+	  key/select-omit consistent across a family of LFs over one PF
+	  isn't just neat, it saves real DASD and CPU
+
+
+Common compile errors (and what they actually mean)
+----------------------------------------------------------
+	• CPD7948 - "Key, select, or omit field name not found in
+	  logical file." The field on your S/O line was never declared
+	  as a plain field or a key elsewhere in the record format. Add
+	  a field-level entry for it, or add DYNSLT to the file.
+	• CPD7486 - "Keyword specified at incorrect level." A file-level
+	  keyword (DYNSLT, UNIQUE, a file-wide ALTSEQ, etc.) was coded
+	  after the "R" line, or nested under a field/key/select-omit
+	  entry, instead of on its own line before "R".
+	• Decimal-positions error on a numeric field - a P/S/B field was
+	  restated in the LF with digits but no decimal positions (e.g.
+	  "10P" instead of "10P 0"). Either give both, or don't restate
+	  the field's attributes at all and let it inherit from the PF.
+	• A "K" appearing after an "S"/"O" entry for the same record
+	  format breaks the required order (all keys, then all
+	  select/omit) even when no single line looks wrong on its own -
+	  move every K entry above every S/O entry for that format.
+
+
 Quick reference
 -------------------
 	• K        -> defines a key field (sort sequence)
@@ -254,8 +350,8 @@ Quick reference
 	• COMP     -> compares a field to a single value (EQ, NE, GT, LT, GE, LE)
 	• VALUES   -> compares a field to a list of values (OR'ed)
 	• RANGE    -> compares a field to a low/high pair (inclusive)
-	• UNIQUE   -> enforces unique key values in the logical view
-	• DYNSLT   -> evaluates SELECT/OMIT at runtime instead of build time
+	• UNIQUE   -> enforces unique key values (file-level - before the R line)
+	• DYNSLT   -> evaluates SELECT/OMIT at runtime (file-level - before the R line)
 	• PFILE    -> names the physical file(s) this logical file is based on
 	• RENAME   -> exposes a physical field under a different name
 	• CONCAT   -> builds a field by joining two or more physical fields
