@@ -1,0 +1,48 @@
+/* ------------------------------------------------------------------ */
+/* InlineSQL.CLLE                                                     */
+/*                                                                     */
+/* IBM i Control Language (CL) sample showing the RUNSQL command,     */
+/* which lets a CL program run SQL statements directly - no embedded  */
+/* SQL precompile step like RPG or COBOL requires.                    */
+/*                                                                     */
+/* CL variables can be passed straight into the SQL text using the    */
+/* ":&variable" host-variable syntax, and results can be pulled back  */
+/* out with a "SELECT ... INTO :&variable" statement.                 */
+/* ------------------------------------------------------------------ */
+
+             PGM
+
+             DCL        VAR(&CUSNO)   TYPE(*DEC) LEN(7 0)
+             DCL        VAR(&CUSNAME) TYPE(*CHAR) LEN(30)
+             DCL        VAR(&BALANCE) TYPE(*DEC) LEN(9 2)
+             DCL        VAR(&MSGTEXT) TYPE(*CHAR) LEN(132)
+
+             CHGVAR     VAR(&CUSNO)   VALUE(1001)
+             CHGVAR     VAR(&CUSNAME) VALUE('NICK')
+             CHGVAR     VAR(&BALANCE) VALUE(100.00)
+
+/* Insert a row, passing CL variables straight in as host variables    */
+             RUNSQL     SQL('INSERT INTO MYLIB.CUSTOMER +
+                              (CUSNO, CUSNAME, BALANCE) +
+                              VALUES (:&CUSNO, :&CUSNAME, :&BALANCE)') +
+                          COMMIT(*NONE)
+
+/* Update the row with another inline SQL statement                    */
+             RUNSQL     SQL('UPDATE MYLIB.CUSTOMER +
+                              SET BALANCE = BALANCE + 25.00 +
+                              WHERE CUSNO = :&CUSNO') +
+                          COMMIT(*NONE)
+
+/* Read a value back out of the database into CL variables             */
+             RUNSQL     SQL('SELECT CUSNAME, BALANCE +
+                              INTO :&CUSNAME, :&BALANCE +
+                              FROM MYLIB.CUSTOMER +
+                              WHERE CUSNO = :&CUSNO') +
+                          COMMIT(*NONE)
+
+             CHGVAR     VAR(&MSGTEXT) VALUE('Customer' *BCAT &CUSNAME *BCAT +
+                          'balance is' *BCAT &BALANCE)
+
+             SNDPGMMSG  MSG(&MSGTEXT)
+
+             ENDPGM
