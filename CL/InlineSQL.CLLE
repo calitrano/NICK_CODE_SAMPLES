@@ -2,12 +2,21 @@
 /* InlineSQL.CLLE                                                     */
 /*                                                                     */
 /* IBM i Control Language (CL) sample showing the RUNSQL command,     */
-/* which lets a CL program run SQL statements directly - no embedded  */
-/* SQL precompile step like RPG or COBOL requires.                    */
+/* which lets a CL program run an SQL statement directly - no         */
+/* embedded SQL precompile step like RPG or COBOL requires.           */
 /*                                                                     */
-/* CL variables can be passed straight into the SQL text using the    */
-/* ":&variable" host-variable syntax, and results can be pulled back  */
-/* out with a "SELECT ... INTO :&variable" statement.                 */
+/* CL is not a precompiled SQL host language, so there is no ":hostvar"*/
+/* binding syntax like embedded SQL in RPG/COBOL. RUNSQL's SQL()      */
+/* parameter just takes a plain character string. To get a CL         */
+/* variable's value into the statement, build the full SQL text with  */
+/* CHGVAR/concatenation first, then pass the resolved CL variable to  */
+/* RUNSQL.                                                             */
+/*                                                                     */
+/* Note: RUNSQL runs a single statement (insert/update/delete/ddl/    */
+/* call); it does not return query results back into CL variables.    */
+/* Pulling data out of the database into a CL program typically means */
+/* calling a stored procedure/UDF or an RPG/COBOL program that uses   */
+/* real embedded SQL.                                                 */
 /*                                                                     */
 /* Requires IBM i 7.3 TR6 / 7.4 or later - RUNSQL did not exist on    */
 /* earlier releases (use RUNSQLSTM against a source member instead).  */
@@ -16,28 +25,29 @@
              PGM
 
              DCL        VAR(&CUSNO)   TYPE(*DEC) LEN(7 0)
-             DCL        VAR(&CUSNAME) TYPE(*CHAR) LEN(30)
              DCL        VAR(&BALANCE) TYPE(*DEC) LEN(9 2)
+             DCL        VAR(&SQLSTMT) TYPE(*CHAR) LEN(300)
              DCL        VAR(&MSGTEXT) TYPE(*CHAR) LEN(132)
 
              CHGVAR     VAR(&CUSNO)   VALUE(1001)
-             CHGVAR     VAR(&CUSNAME) VALUE('NICK')
              CHGVAR     VAR(&BALANCE) VALUE(100.00)
 
-/* Insert a row, passing CL variables straight in as host variables    */
-             RUNSQL     SQL('INSERT INTO MYLIB.CUSTOMER (CUSNO, CUSNAME, BALANCE) VALUES (:&CUSNO, :&CUSNAME, :&BALANCE)') +
-                          COMMIT(*NONE)
+/* Build the INSERT text from CL variables, then run it inline.        */
+/* '''NICK''' is a CL string constant whose runtime value is 'NICK'    */
+/* (a doubled quote inside a CL literal represents one literal quote). */
+             CHGVAR     VAR(&SQLSTMT) VALUE('INSERT INTO MYLIB.CUSTOMER (CUSNO, CUSNAME, BALANCE) VALUES (' *BCAT +
+                          %CHAR(&CUSNO) *BCAT ',' *BCAT '''NICK''' *BCAT ',' *BCAT +
+                          %CHAR(&BALANCE) *BCAT ')')
 
-/* Update the row with another inline SQL statement                    */
-             RUNSQL     SQL('UPDATE MYLIB.CUSTOMER SET BALANCE = BALANCE + 25.00 WHERE CUSNO = :&CUSNO') +
-                          COMMIT(*NONE)
+             RUNSQL     SQL(&SQLSTMT) COMMIT(*NONE)
 
-/* Read values back out of the database into CL variables              */
-             RUNSQL     SQL('SELECT CUSNAME, BALANCE INTO :&CUSNAME, :&BALANCE FROM MYLIB.CUSTOMER WHERE CUSNO = :&CUSNO') +
-                          COMMIT(*NONE)
+/* Build and run an UPDATE the same way                                */
+             CHGVAR     VAR(&SQLSTMT) VALUE('UPDATE MYLIB.CUSTOMER SET BALANCE = BALANCE + 25.00 WHERE CUSNO =' +
+                          *BCAT %CHAR(&CUSNO))
 
-             CHGVAR     VAR(&MSGTEXT) VALUE('Customer' *BCAT &CUSNAME *BCAT +
-                          'balance is' *BCAT %CHAR(&BALANCE))
+             RUNSQL     SQL(&SQLSTMT) COMMIT(*NONE)
+
+             CHGVAR     VAR(&MSGTEXT) VALUE('Ran inline SQL for customer' *BCAT %CHAR(&CUSNO))
 
              SNDPGMMSG  MSG(&MSGTEXT)
 
