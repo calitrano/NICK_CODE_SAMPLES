@@ -8,6 +8,9 @@
 /* CL variables can be passed straight into the SQL text using the    */
 /* ":&variable" host-variable syntax, and results can be pulled back  */
 /* out with a "SELECT ... INTO :&variable" statement.                 */
+/*                                                                     */
+/* Requires IBM i 7.3 TR6 / 7.4 or later - RUNSQL did not exist on    */
+/* earlier releases (use RUNSQLSTM against a source member instead).  */
 /* ------------------------------------------------------------------ */
 
              PGM
@@ -22,26 +25,19 @@
              CHGVAR     VAR(&BALANCE) VALUE(100.00)
 
 /* Insert a row, passing CL variables straight in as host variables    */
-             RUNSQL     SQL('INSERT INTO MYLIB.CUSTOMER +
-                              (CUSNO, CUSNAME, BALANCE) +
-                              VALUES (:&CUSNO, :&CUSNAME, :&BALANCE)') +
+             RUNSQL     SQL('INSERT INTO MYLIB.CUSTOMER (CUSNO, CUSNAME, BALANCE) VALUES (:&CUSNO, :&CUSNAME, :&BALANCE)') +
                           COMMIT(*NONE)
 
 /* Update the row with another inline SQL statement                    */
-             RUNSQL     SQL('UPDATE MYLIB.CUSTOMER +
-                              SET BALANCE = BALANCE + 25.00 +
-                              WHERE CUSNO = :&CUSNO') +
+             RUNSQL     SQL('UPDATE MYLIB.CUSTOMER SET BALANCE = BALANCE + 25.00 WHERE CUSNO = :&CUSNO') +
                           COMMIT(*NONE)
 
-/* Read a value back out of the database into CL variables             */
-             RUNSQL     SQL('SELECT CUSNAME, BALANCE +
-                              INTO :&CUSNAME, :&BALANCE +
-                              FROM MYLIB.CUSTOMER +
-                              WHERE CUSNO = :&CUSNO') +
+/* Read values back out of the database into CL variables              */
+             RUNSQL     SQL('SELECT CUSNAME, BALANCE INTO :&CUSNAME, :&BALANCE FROM MYLIB.CUSTOMER WHERE CUSNO = :&CUSNO') +
                           COMMIT(*NONE)
 
              CHGVAR     VAR(&MSGTEXT) VALUE('Customer' *BCAT &CUSNAME *BCAT +
-                          'balance is' *BCAT &BALANCE)
+                          'balance is' *BCAT %CHAR(&BALANCE))
 
              SNDPGMMSG  MSG(&MSGTEXT)
 
