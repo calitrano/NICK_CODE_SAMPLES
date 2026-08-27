@@ -1,0 +1,92 @@
+             PGM        PARM(&FROMLIB &TOLIB)
+
+/*================================================================*/
+/* Program .: CPYPFLOOP                                           */
+/* Purpose .: Loop through every physical file (object attribute  */
+/*            *PF) that exists in &FROMLIB and copy each one into */
+/*            &TOLIB, creating the target file if it is not       */
+/*            already there. The list of files is built at run    */
+/*            time with DSPOBJD, so no file names are hard coded   */
+/*            and any file added to or removed from the library    */
+/*            is automatically picked up on the next run.          */
+/*                                                                  */
+/* Parms ...: &FROMLIB - library holding the source PFs           */
+/*            &TOLIB   - library to receive the copied PFs        */
+/*================================================================*/
+
+             DCL        VAR(&FROMLIB) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&TOLIB)   TYPE(*CHAR) LEN(10)
+
+             DCL        VAR(&CMD)     TYPE(*CHAR) LEN(200)
+             DCL        VAR(&CPYCNT)  TYPE(*DEC) LEN(5 0) VALUE(0)
+             DCL        VAR(&ERRCNT)  TYPE(*DEC) LEN(5 0) VALUE(0)
+             DCL        VAR(&MSGTXT)  TYPE(*CHAR) LEN(80)
+             DCL        VAR(&MSGID)   TYPE(*CHAR) LEN(7)
+
+/* QADSPOBJ is only used as a model so this program inherits the  */
+/* record format that DSPOBJD OUTFILE(*OUTFILE) writes to - the   */
+/* real data comes from the QTEMP file built below at run time.   */
+             DCLF       FILE(QSYS/QADSPOBJ)
+
+             MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(ERROR))
+
+/*----------------------------------------------------------------*/
+/* Build a one row per object work file describing &FROMLIB       */
+/*----------------------------------------------------------------*/
+             DLTF       FILE(QTEMP/OBJLST)
+             MONMSG     MSGID(CPF2105)             /* first run, ok */
+
+             DSPOBJD    OBJ(&FROMLIB/*ALL) OBJTYPE(*FILE) +
+                          OUTPUT(*OUTFILE) OUTFILE(QTEMP/OBJLST)
+
+             OVRDBF     FILE(QADSPOBJ) TOFILE(QTEMP/OBJLST) SHARE(*NO)
+
+/*----------------------------------------------------------------*/
+/* Read the work file one row at a time; copy every row whose     */
+/* object attribute is *PF (skip logical files and other types)   */
+/*----------------------------------------------------------------*/
+LOOP:        RCVF
+             MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(ENDLOOP))
+
+             IF         COND(&ODOBAT *NE 'PF') THEN(GOTO CMDLBL(LOOP))
+
+             CHGVAR     VAR(&CMD) VALUE('CPYF FROMFILE(' *CAT &FROMLIB +
+                          *TCAT '/' *CAT &ODOBNM *BCAT ') TOFILE(' +
+                          *CAT &TOLIB *TCAT '/' *CAT &ODOBNM *BCAT +
+                          ') MBROPT(*REPLACE) CRTFILE(*YES)')
+
+             CALL       PGM(QCMDEXC) PARM(&CMD 200)
+             MONMSG     MSGID(CPF0000) EXEC(DO)
+                            CHGVAR     VAR(&ERRCNT) VALUE(&ERRCNT + 1)
+                            GOTO       CMDLBL(LOOP)
+                        ENDDO
+
+             CHGVAR     VAR(&CPYCNT) VALUE(&CPYCNT + 1)
+             GOTO       CMDLBL(LOOP)
+
+/*----------------------------------------------------------------*/
+/* Clean up and report the results                                */
+/*----------------------------------------------------------------*/
+ENDLOOP:     CLOF       FILE(QADSPOBJ)
+             MONMSG     MSGID(CPF0000)
+
+             DLTOVR     FILE(QADSPOBJ)
+             DLTF       FILE(QTEMP/OBJLST)
+             MONMSG     MSGID(CPF2105)
+
+             CHGVAR     VAR(&MSGTXT) VALUE('CPYPFLOOP complete - ' +
+                          *CAT %CHAR(&CPYCNT) *BCAT 'file(s) copied, ' +
+                          *CAT %CHAR(&ERRCNT) *BCAT 'error(s).')
+             SNDPGMMSG  MSG(&MSGTXT) MSGTYPE(*COMP)
+
+             RETURN
+
+/*----------------------------------------------------------------*/
+/* Unexpected error - surface it to the caller and end            */
+/*----------------------------------------------------------------*/
+ERROR:       RCVMSG     MSGTYPE(*EXCP) MSGDTA(&MSGTXT) MSGID(&MSGID)
+             SNDPGMMSG  MSGID(CPF9898) MSGF(QCPFMSG) +
+                          MSGDTA('CPYPFLOOP ended abnormally: ' +
+                          *CAT &MSGID *BCAT &MSGTXT) MSGTYPE(*ESCAPE)
+
+             ENDPGM
